@@ -1,0 +1,66 @@
+version: "3.9"
+services:
+  # container for the database
+  # this container is used to store the data
+  db:
+    image: pgrouting/pgrouting:latest
+    container_name: postgis
+    environment:
+      POSTGRES_DB: routing
+      POSTGRES_USER: routing
+      POSTGRES_PASSWORD: pass
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "routing"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # container for the flask api
+  # this container is used to serve the api
+  flask:
+    build:
+      context: ./flask
+      dockerfile: Dockerfile
+    container_name: flask_api
+    volumes:
+      - ./flask:/app
+      - ./data:/data
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      
+    environment:
+      - DATA_ADDRESS=/data/Adresses.geojson
+      - DATA_STREETS=/data/Segments_de_rue.shp
+      - DATABASE_URL=postgresql://qc_user:qc_password@db:5432/qc_routing
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  # container for the web server
+  # this container is used to serve the web application
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./web:/usr/share/nginx/html:ro
+    depends_on:
+      - flask
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+volumes:
+  postgis_data:

@@ -1,0 +1,15 @@
+{
+    "name": "pgRouting Python Dev",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "python",
+    "workspaceFolder": "/workspaces/gis_starter_pgrouting_geolab",
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "ms-python.python",
+          "ms-python.vscode-pylance"
+        ]
+      }
+    },
+    "forwardPorts": [5432, 80]
+  }

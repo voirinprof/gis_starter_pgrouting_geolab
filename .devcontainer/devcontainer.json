@@ -1,6 +1,6 @@
 {
   "name": "PostGIS pgRouting Flask Devcontainer",
-  "dockerComposeFile": "docker-compose.yml",
+  "dockerComposeFile": "../docker-compose.yml",
   "service": "flask",
   "workspaceFolder": "/workspaces/gis_starter_pgrouting_geolab",
   "forwardPorts": [80, 5432, 5050],

@@ -1,15 +1,19 @@
 {
-    "name": "pgRouting Python Dev",
-    "dockerComposeFile": "../docker-compose.yml",
-    "service": "python",
-    "workspaceFolder": "/workspaces/gis_starter_pgrouting_geolab",
-    "customizations": {
-      "vscode": {
-        "extensions": [
-          "ms-python.python",
-          "ms-python.vscode-pylance"
-        ]
-      }
-    },
-    "forwardPorts": [5432, 80]
+  "name": "PostGIS pgRouting Flask Devcontainer",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "flask",
+  "workspaceFolder": "/workspaces/gis_starter_pgrouting_geolab",
+  "forwardPorts": [80, 5432, 5050],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-docker",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "redhat.vscode-yaml",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg"
+      ]
+    }
   }
+}

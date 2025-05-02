@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Leaflet Route Finder with Autocomplete</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    #map {
+      height: calc(100% - 100px);
+    }
+    #search-form {
+      padding: 10px;
+      background: #f8f8f8;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .autocomplete-wrapper {
+      position: relative;
+      flex: 1 1 200px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      font-size: 1rem;
+    }
+    .suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ccc;
+      z-index: 10000;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .suggestions div {
+      padding: 8px;
+      cursor: pointer;
+    }
+    .suggestions div:hover {
+      background: #eee;
+    }
+    button {
+      padding: 8px 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <form id="search-form">
+    <div class="autocomplete-wrapper">
+      <input type="text" id="start" placeholder="Start address" autocomplete="off" required />
+      <div class="suggestions" id="start-suggestions"></div>
+    </div>
+    <div class="autocomplete-wrapper">
+      <input type="text" id="end" placeholder="End address" autocomplete="off" required />
+      <div class="suggestions" id="end-suggestions"></div>
+    </div>
+    <button type="submit">Find Route</button>
+  </form>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([45.3815382761088, -71.9233535734565], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+  
+    let startMarker = null;
+    let endMarker = null;
+    let routeLine = null;
+  
+    async function fetchSuggestions(query) {
+      const res = await fetch(`/api/suggest?q=${encodeURIComponent(query)}`);
+      return res.ok ? await res.json() : [];
+    }
+  
+    async function geocode(address) {
+      const res = await fetch(`/api/location?q=${encodeURIComponent(address)}`);
+      const data = await res.json();
+      if (data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lon: parseFloat(data[0].lon),
+          name: data[0].display_name
+        };
+      } else {
+        throw new Error('No location found');
+      }
+    }
+  
+    async function fetchRoute(start, end) {
+      const res = await fetch(`/api/findpath?start=${encodeURIComponent(start.name)}&end=${encodeURIComponent(end.name)}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch route');
+      }
+      const data = await res.json();
+      // if data contains key geojson
+      if (data.geojson) {
+        return data.geojson;
+      } else {
+        throw new Error('No route found');
+      }
+
+      
+    }
+  
+    function setupAutocomplete(inputId, suggestionsId, type) {
+      const input = document.getElementById(inputId);
+      const suggestions = document.getElementById(suggestionsId);
+  
+      input.addEventListener('input', async () => {
+        const query = input.value.trim();
+        if (query.length < 2) {
+          suggestions.innerHTML = '';
+          return;
+        }
+        const results = await fetchSuggestions(query);
+        suggestions.innerHTML = '';
+        results.forEach(item => {
+          const div = document.createElement('div');
+          div.textContent = item.label || item.name || item;
+          div.addEventListener('click', async () => {
+            input.value = div.textContent;
+            suggestions.innerHTML = '';
+            try {
+              const result = await geocode(div.textContent);
+              const coords = [result.lat, result.lon];
+              map.setView(coords, 15);
+  
+              if (type === 'start') {
+                if (startMarker) startMarker.setLatLng(coords).setPopupContent("Start: " + result.name).openPopup();
+                else startMarker = L.marker(coords).addTo(map).bindPopup("Start: " + result.name).openPopup();
+              } else if (type === 'end') {
+                if (endMarker) endMarker.setLatLng(coords).setPopupContent("End: " + result.name).openPopup();
+                else endMarker = L.marker(coords).addTo(map).bindPopup("End: " + result.name).openPopup();
+              }
+  
+            } catch (err) {
+              alert("Could not geocode address.");
+            }
+          });
+          suggestions.appendChild(div);
+        });
+      });
+  
+      document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !suggestions.contains(e.target)) {
+          suggestions.innerHTML = '';
+        }
+      });
+    }
+  
+    // setup with marker type indication
+    setupAutocomplete('start', 'start-suggestions', 'start');
+    setupAutocomplete('end', 'end-suggestions', 'end');
+  
+    document.getElementById('search-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const startAddr = document.getElementById('start').value;
+      const endAddr = document.getElementById('end').value;
+  
+      try {
+        const start = await geocode(startAddr);
+        const end = await geocode(endAddr);
+        const startLatLng = [start.lat, start.lon];
+        const endLatLng = [end.lat, end.lon];
+  
+        map.fitBounds([startLatLng, endLatLng], { padding: [40, 40] });
+  
+        if (startMarker) startMarker.setLatLng(startLatLng).setPopupContent("Start: " + start.name).openPopup();
+        else startMarker = L.marker(startLatLng).addTo(map).bindPopup("Start: " + start.name).openPopup();
+  
+        if (endMarker) endMarker.setLatLng(endLatLng).setPopupContent("End: " + end.name).openPopup();
+        else endMarker = L.marker(endLatLng).addTo(map).bindPopup("End: " + end.name).openPopup();
+  
+        // Appeler l'API pour obtenir le GeoJSON de l'itinéraire
+        const geojson = await fetchRoute(start, end);
+  
+        // Supprimer l'ancienne route si elle existe
+        if (routeLine) map.removeLayer(routeLine);
+  
+        // Afficher la nouvelle route avec L.geoJSON
+        routeLine = L.geoJSON(geojson, {
+          style: {
+            color: 'blue',
+            weight: 5,
+            opacity: 0.7
+          }
+        }).addTo(map);
+  
+        // Ajuster la vue pour inclure la route
+        map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+  
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  </script>
+</body>
+</html>

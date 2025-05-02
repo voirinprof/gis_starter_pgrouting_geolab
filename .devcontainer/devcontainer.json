@@ -1,13 +1,18 @@
 {
   "name": "PostGIS pgRouting Flask Devcontainer",
-  "dockerComposeFile": "../docker-compose.yml",
-  "service": "flask",
+  "image": "mcr.microsoft.com/devcontainers/base:dev-debian",
   "workspaceFolder": "/workspaces/gis_starter_pgrouting_geolab",
-  "forwardPorts": [80, 5432, 5050],
+  "postCreateCommand": "docker compose up -d",
+  "portsAttributes": {
+    "80": {
+      "label": "pgRouting Web Server",
+      "onAutoForward": "openPreview"
+    }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
-        "ms-vscode.vscode-docker",
+        "ms-azuretools.vscode-docker",
         "ms-python.python",
         "ms-python.vscode-pylance",
         "redhat.vscode-yaml",
@@ -17,3 +22,23 @@
     }
   }
 }
+
+// {
+//   "name": "PostGIS pgRouting Flask Devcontainer",
+//   "dockerComposeFile": "../docker-compose.yml",
+//   "service": "flask",
+//   "workspaceFolder": "/workspaces/gis_starter_pgrouting_geolab",
+//   "forwardPorts": [80, 5432, 5050],
+//   "customizations": {
+//     "vscode": {
+//       "extensions": [
+//         "ms-vscode.vscode-docker",
+//         "ms-python.python",
+//         "ms-python.vscode-pylance",
+//         "redhat.vscode-yaml",
+//         "mtxr.sqltools",
+//         "mtxr.sqltools-driver-pg"
+//       ]
+//     }
+//   }
+// }
